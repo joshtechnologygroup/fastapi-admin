@@ -157,6 +157,8 @@ class Enum(Select):
         self.enum_type = enum_type
 
     async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
         return self.enum(self.enum_type(value))
 
     async def get_options(self):
@@ -188,6 +190,11 @@ class Json(Input):
             options = {}
         self.context.update(options=options)
 
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
+
     async def render(self, request: Request, value: Any):
         if value:
             value = json.dumps(value)
@@ -206,9 +213,19 @@ class Editor(Text):
 class DateTime(Text):
     template = "widgets/inputs/datetime.html"
 
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
+
 
 class Date(Text):
     template = "widgets/inputs/date.html"
+
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
 
 
 class File(Input):
@@ -278,6 +295,11 @@ class Password(Text):
 
 class Number(Text):
     input_type = "number"
+    
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
 
 
 class Color(Text):
