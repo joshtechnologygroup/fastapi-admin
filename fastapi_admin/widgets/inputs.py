@@ -1,5 +1,6 @@
 import abc
 import json
+from datetime import datetime
 from enum import Enum as EnumCLS
 from typing import Any, List, Optional, Tuple, Type
 
@@ -212,6 +213,17 @@ class Editor(Text):
 
 class DateTime(Text):
     template = "widgets/inputs/datetime.html"
+    default_help_text = 'Note: You are 5.5 hours ahead of server time.'
+
+    def __init__(self, help_text: Optional[str] = None, *args, **kwargs):
+        help_text = help_text or self.default_help_text
+        super().__init__(help_text, *args, **kwargs)
+    
+    def render(self, request: Request, value: datetime):
+        if value:
+            value = value.strftime('%Y-%m-%d %H:%M:%S')
+
+        return super().render(request, value)
 
     async def parse_value(self, request: Request, value: Any):
         if value == '' or value == None:
