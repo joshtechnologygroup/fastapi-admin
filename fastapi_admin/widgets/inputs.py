@@ -1,5 +1,6 @@
 import abc
 import json
+from datetime import datetime
 from enum import Enum as EnumCLS
 from typing import Any, List, Optional, Tuple, Type
 
@@ -157,6 +158,8 @@ class Enum(Select):
         self.enum_type = enum_type
 
     async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
         return self.enum(self.enum_type(value))
 
     async def get_options(self):
@@ -188,6 +191,11 @@ class Json(Input):
             options = {}
         self.context.update(options=options)
 
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
+
     async def render(self, request: Request, value: Any):
         if value:
             value = json.dumps(value)
@@ -204,11 +212,32 @@ class Editor(Text):
 
 
 class DateTime(Text):
-    input_type = "datetime"
+    template = "widgets/inputs/datetime.html"
+    default_help_text = 'Note: You are 5.5 hours ahead of server time.'
+
+    def __init__(self, help_text: Optional[str] = None, *args, **kwargs):
+        help_text = help_text or self.default_help_text
+        super().__init__(help_text, *args, **kwargs)
+    
+    def render(self, request: Request, value: datetime):
+        if value:
+            value = value.strftime('%Y-%m-%d %H:%M:%S')
+
+        return super().render(request, value)
+
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
 
 
 class Date(Text):
     input_type = "date"
+
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
 
 
 class File(Input):
@@ -278,6 +307,11 @@ class Password(Text):
 
 class Number(Text):
     input_type = "number"
+    
+    async def parse_value(self, request: Request, value: Any):
+        if value == '' or value == None:
+            return None
+        return await super().parse_value(request, value)
 
 
 class Color(Text):

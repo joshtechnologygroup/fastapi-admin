@@ -7,7 +7,7 @@ from tortoise import Model
 from tortoise.fields import ManyToManyRelation
 from tortoise.transactions import in_transaction
 
-from fastapi_admin.depends import get_model, get_model_resource, get_resources
+from fastapi_admin.depends import get_model, get_model_resource, get_resources, get_app
 from fastapi_admin.resources import Model as ModelResource
 from fastapi_admin.resources import render_values
 from fastapi_admin.responses import redirect
@@ -37,6 +37,9 @@ async def list_view(
     else:
         page_size = model_resource.page_size
     qs = qs.offset((page_num - 1) * page_size)
+    if getattr(model_resource, 'ordering', None):
+        qs = qs.order_by(getattr(model_resource, 'ordering'))
+        
     values = await qs.values()
     rendered_values, row_attributes, column_attributes, cell_attributes = await render_values(
         request, model_resource, fields, values
@@ -83,10 +86,11 @@ async def update(
     model_resource: ModelResource = Depends(get_model_resource),
     resources=Depends(get_resources),
     model=Depends(get_model),
+    app=Depends(get_app),
 ):
     form = await request.form()
     data, m2m_data = await model_resource.resolve_data(request, form)
-    async with in_transaction() as conn:
+    async with in_transaction(connection_name=app.connection_name) as conn:
         obj = (
             await model.filter(pk=pk)
             .using_db(conn)
@@ -203,11 +207,12 @@ async def create(
     resources=Depends(get_resources),
     model_resource: ModelResource = Depends(get_model_resource),
     model=Depends(get_model),
+    app=Depends(get_app),
 ):
     inputs = await model_resource.get_inputs(request)
     form = await request.form()
     data, m2m_data = await model_resource.resolve_data(request, form)
-    async with in_transaction() as conn:
+    async with in_transaction(connection_name=app.connection_name) as conn:
         obj = await model.create(**data, using_db=conn)
         for k, items in m2m_data.items():
             m2m_obj = getattr(obj, k)  # type:ManyToManyRelation
