@@ -46,7 +46,7 @@ async def list_view(
 
     if getattr(model_resource, 'ordering', None):
         qs = qs.order_by(getattr(model_resource, 'ordering'))
-    
+
     if fk_fields:
         objects = await qs.select_related(*fk_fields)
         values = []
