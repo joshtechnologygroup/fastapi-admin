@@ -25,6 +25,7 @@ class FastAPIAdmin(FastAPI):
     redis: redis.Redis
     language_switch: bool = True
     favicon_url: Optional[HttpUrl] = None
+    connection_name: str = None
 
     async def configure(
         self,
@@ -36,6 +37,7 @@ class FastAPIAdmin(FastAPI):
         template_folders: Optional[List[str]] = None,
         providers: Optional[List[Provider]] = None,
         favicon_url: Optional[HttpUrl] = None,
+        connection_name: str = None
     ):
         self.redis = redis
         i18n.set_locale(default_locale)
@@ -43,6 +45,7 @@ class FastAPIAdmin(FastAPI):
         self.language_switch = language_switch
         self.logo_url = logo_url
         self.favicon_url = favicon_url
+        self.connection_name = connection_name
         if template_folders:
             template.add_template_folder(*template_folders)
         await self._register_providers(providers)
