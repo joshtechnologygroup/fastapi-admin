@@ -9,6 +9,10 @@ from tortoise import Tortoise
 from fastapi_admin.exceptions import InvalidResource
 from fastapi_admin.resources import Dropdown, Link, Model, Resource
 
+def get_app():
+    from fastapi_admin.app import app
+    return app
+
 
 def get_model(resource: Optional[str] = Path(...)):
     if not resource:
