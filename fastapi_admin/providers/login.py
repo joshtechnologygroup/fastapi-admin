@@ -119,7 +119,7 @@ class UsernamePasswordProvider(Provider):
         request: Request,
         call_next: RequestResponseEndpoint,
     ):
-        redis = request.app.redis  # type:Redis
+        redis = request.app.redis  # type:ignore
         token = request.cookies.get(self.access_token)
         path = request.scope["path"]
         admin = None
