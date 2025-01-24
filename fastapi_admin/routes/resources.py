@@ -38,14 +38,13 @@ async def list_view(
     total = await qs.count()
     if order_by:
         qs = qs.order_by(order_by)
+    elif getattr(model_resource, 'ordering', None):
+        qs = qs.order_by(getattr(model_resource, 'ordering'))
     if page_size:
         qs = qs.limit(page_size)
     else:
         page_size = model_resource.page_size
     qs = qs.offset((page_num - 1) * page_size)
-
-    if getattr(model_resource, 'ordering', None):
-        qs = qs.order_by(getattr(model_resource, 'ordering'))
 
     if fk_fields:
         objects = await qs.select_related(*fk_fields)
