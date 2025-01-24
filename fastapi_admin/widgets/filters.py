@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Tuple, Type
 import pendulum
 from starlette.requests import Request
 from tortoise import Model
+from tortoise.expressions import Q
 from tortoise.queryset import QuerySet
 
 from fastapi_admin import constants
@@ -48,6 +49,28 @@ class Search(Filter):
         else:
             super().__init__(name + "__" + search_mode, label, placeholder)
         self.context.update(search_mode=search_mode)
+
+
+class MultipleFieldSearch(Filter):
+    template = "widgets/filters/search.html"
+
+    def __init__(self,
+        fields: List[str],
+        label: str,
+        name: str = 'q',
+        placeholder: str = "",
+        null: bool = True,
+    ):
+        fields = [field + '__icontains' for field in fields]
+        super().__init__(name, label, placeholder, null, fields=fields)
+
+    async def get_queryset(self, request: Request, value: Any, qs: QuerySet):
+        value = await self.parse_value(request, value)
+        filters = Q()
+        for field in self.context['fields']:
+            filters |= Q(**{field: value})
+
+        return qs.filter(filters)
 
 
 class Datetime(Filter):
