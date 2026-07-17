@@ -3,15 +3,24 @@
 {% block page_body %}
 <div class="col-12">
   <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex align-items-center">
       <h3 class="card-title">{{ resource_label }}</h3>
+      <span class="badge bg-secondary ms-auto">{{ _('view') }}</span>
     </div>
-    <dl class="card-body row mb-0">
-      {% for field in fields %}
-        <dt class="col-sm-3">{{ field.label }}</dt>
-        <dd class="col-sm-9">{{ rendered_values[loop.index0]|safe }}</dd>
-      {% endfor %}
-    </dl>
+    <div class="table-responsive">
+      <table class="table table-vcenter table-striped card-table mb-0">
+        <tbody>
+          {% for field in fields %}
+            <tr>
+              <th class="text-muted text-nowrap w-25" scope="row">
+                {{ field.label|replace('_', ' ') }}
+              </th>
+              <td class="text-wrap">{{ rendered_values[loop.index0]|safe }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <div class="card-footer">
       <a class="btn btn-secondary" href="{{ request.app.admin_path }}/{{ resource }}/list">
         {{ _('return') }}
