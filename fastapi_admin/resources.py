@@ -114,6 +114,16 @@ class Model(Resource):
             Action(label=_("delete"), icon="ti ti-trash", name="delete", method=Method.DELETE),
         ]
 
+    async def get_row_actions(self, request: Request, obj: Dict[str, Any]) -> List[Action]:
+        """Return the actions available for one row in the list view.
+
+        The default preserves the resource-wide actions used by older
+        resources. Subclasses can remove actions for individual records
+        without overriding the list template.
+        """
+        actions = getattr(self, "actions", None)
+        return actions if actions is not None else await self.get_actions(request)
+
     async def get_bulk_actions(self, request: Request) -> List[Action]:
         return [
             Action(
@@ -123,6 +133,15 @@ class Model(Resource):
                 method=Method.DELETE,
             ),
         ]
+
+    @classmethod
+    def get_queryset(cls) -> QuerySet:
+        """Return the base queryset used by the resource list view.
+
+        Resources may override this to alter visibility without changing the
+        model's global default manager.
+        """
+        return cls.model.all()
 
     @classmethod
     async def get_inputs(cls, request: Request, obj: Optional[TortoiseModel] = None):

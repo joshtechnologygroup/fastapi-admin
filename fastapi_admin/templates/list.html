@@ -105,14 +105,15 @@
                             </a>
                             </th>
                         {% endfor %}
-                        {% if model_resource.actions %}
+                        {% if row_actions|select|list %}
                             <th></th>
                         {% endif %}
                     </tr>
                     </thead>
                     <tbody>
                     {% for value in rendered_values %}
-                        <tr {% for k,v in row_attributes[loop.index0].items() %}{{ k }}="{{ v }}"{% endfor %}>
+                        {% set row_index = loop.index0 %}
+                        <tr {% for k,v in row_attributes[row_index].items() %}{{ k }}="{{ v }}"{% endfor %}>
                         {% if model_resource.bulk_actions %}
                             <td>
                                 <input
@@ -122,13 +123,13 @@
                                 />
                             </td>
                         {% endif %}
-                        {% with outer_index = loop.index0 %}
+                        {% with outer_index = row_index %}
                             {% for x in value %}
                                 <td {% for k,v in cell_attributes[outer_index][loop.index0].items() %}
                                 {{ k }}="{{ v }}"{% endfor %}>{{ x|safe }}</td>
                             {% endfor %}
                         {% endwith %}
-                        {% if model_resource.actions %}
+                        {% if row_actions[row_index] %}
                             <td class="text-end">
               <span class="dropdown">
                 <button
@@ -141,7 +142,7 @@
                 <div
                         class="dropdown-menu dropdown-menu-end dropdown-menu-arrow"
                 >
-                {% for action in model_resource.actions %}
+                {% for action in row_actions[row_index] %}
                     {% set url = request.app.admin_path + '/' + resource +'/'+ action.name +'/'+ value[0]|string %}
                     <a
                             class="dropdown-item"
