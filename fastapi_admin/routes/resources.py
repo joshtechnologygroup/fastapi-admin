@@ -1,11 +1,12 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, HTTPException, Path
 from jinja2 import TemplateNotFound
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.status import HTTP_303_SEE_OTHER
 from tortoise import Model
+from tortoise.exceptions import DoesNotExist
 from tortoise.fields import ManyToManyRelation
 from tortoise.transactions import in_transaction
 
@@ -21,7 +22,6 @@ router = APIRouter()
 @router.get("/{resource}/list")
 async def list_view(
     request: Request,
-    model: Model = Depends(get_model),
     resources=Depends(get_resources),
     model_resource: ModelResource = Depends(get_model_resource),
     resource: str = Path(...),
@@ -32,7 +32,7 @@ async def list_view(
     fields_label = model_resource.get_fields_label()
     fields = model_resource.get_fields()
     fk_fields = model_resource.get_fk_field()
-    qs = model.all()
+    qs = model_resource.get_queryset()
     params, qs = await model_resource.resolve_query_params(request, dict(request.query_params), qs)
     filters = await model_resource.get_filters(request, params)
     total = await qs.count()
@@ -63,6 +63,10 @@ async def list_view(
         column_attributes,
         cell_attributes,
     ) = await render_values(request, model_resource, fields, values)
+    row_actions = [
+        await model_resource.get_row_actions(request, value)
+        for value in values
+    ]
 
     context = {
         "request": request,
@@ -74,6 +78,7 @@ async def list_view(
         "column_attributes": column_attributes,
         "cell_attributes": cell_attributes,
         "rendered_values": rendered_values,
+        "row_actions": row_actions,
         "filters": filters,
         "resource": resource,
         "model_resource": model_resource,
@@ -112,13 +117,16 @@ async def update(
     data, m2m_data = await model_resource.resolve_data(request, form)
     m2m_fields = model_resource.get_m2m_field()
     async with in_transaction(connection_name=app.connection_name) as conn:
-        obj = (
-            await model.filter(pk=pk)
-            .using_db(conn)
-            .select_for_update()
-            .get()
-            .prefetch_related(*m2m_fields)
-        )
+        try:
+            obj = (
+                await model.filter(pk=pk)
+                .using_db(conn)
+                .select_for_update()
+                .get()
+                .prefetch_related(*m2m_fields)
+            )
+        except DoesNotExist:
+            raise HTTPException(status_code=404) from None
         await obj.update_from_dict(data).save(using_db=conn)
         for k, items in m2m_data.items():
             m2m_obj = getattr(obj, k)
@@ -167,7 +175,10 @@ async def update_view(
     resources=Depends(get_resources),
     model=Depends(get_model),
 ):
-    obj = await model.get(pk=pk)
+    try:
+        obj = await model.get(pk=pk)
+    except DoesNotExist:
+        raise HTTPException(status_code=404) from None
     inputs = await model_resource.get_inputs(request, obj)
     context = {
         "request": request,
@@ -188,6 +199,54 @@ async def update_view(
     except TemplateNotFound:
         return templates.TemplateResponse(
             "update.html",
+            context=context,
+        )
+
+
+@router.get("/{resource}/view/{pk}")
+async def view(
+    request: Request,
+    resource: str = Path(...),
+    pk: str = Path(...),
+    model_resource: ModelResource = Depends(get_model_resource),
+    resources=Depends(get_resources),
+):
+    """Render a resource row without exposing a mutation endpoint."""
+    fields = model_resource.get_fields()
+    fk_fields = model_resource.get_fk_field()
+    try:
+        obj = await (
+            model_resource.get_queryset()
+            .filter(pk=pk)
+            .select_related(*fk_fields)
+            .get()
+        )
+    except DoesNotExist:
+        raise HTTPException(status_code=404) from None
+
+    values = dict(obj)
+    for field_name in fk_fields:
+        values[field_name] = getattr(obj, field_name)
+    rendered_values, _, _, _ = await render_values(request, model_resource, fields, [values])
+    context = {
+        "request": request,
+        "resources": resources,
+        "resource_label": model_resource.label,
+        "resource": resource,
+        "fields": fields,
+        "rendered_values": rendered_values[0],
+        "model_resource": model_resource,
+        "page_title": model_resource.page_title,
+        "page_pre_title": model_resource.page_pre_title,
+    }
+    try:
+        return templates.TemplateResponse(
+            f"{resource}/view.html",
+            context=context,
+        )
+    except TemplateNotFound:
+        return templates.TemplateResponse(
+            "view.html",
             context=context,
         )
 
